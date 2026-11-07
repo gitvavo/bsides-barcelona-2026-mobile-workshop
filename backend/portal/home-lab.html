@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockapp Home Lab</title>
+<style>
+:root{--green:#18382f;--mint:#b7dfc5;--bg:#f6f6f0;--ink:#20392f;--line:#d9e3d8;--muted:#61746b;--soft:#f1f6f0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--green);color:#fff;padding:26px 0 80px}main,.wrap{max-width:1024px;margin:auto;padding:0 22px}
+.brand{font-size:13px;letter-spacing:2px;color:var(--mint);font-weight:800}
+h1{font-size:clamp(38px,6vw,65px);letter-spacing:-2px;line-height:1.08;margin:48px 0 8px}header p{color:var(--mint);margin:0}
+main{margin-top:-42px;padding-bottom:50px}nav,.panel,.exercise{border:1px solid var(--line);background:#fff;border-radius:15px;padding:22px;margin-bottom:16px;box-shadow:0 8px 20px #0d291b0b}
+nav{display:flex;flex-wrap:wrap;gap:9px}nav a{font:inherit;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:10px 15px;text-decoration:none}nav a:hover{background:var(--green);color:white}button,select{font:inherit}button{cursor:pointer;border-radius:9px;border:1px solid var(--line);padding:10px 15px;background:var(--soft);color:var(--ink)}
+button:hover,button.active{background:var(--green);color:#fff}h2{margin:0 0 10px;font-size:23px}h3{margin:0 0 9px}
+.muted{color:var(--muted);font-size:14px}.hide{display:none}.badge{display:inline-block;border-radius:25px;background:var(--soft);padding:4px 11px;font-size:12px}
+pre{overflow:auto;background:#182f29;color:#e7f6ec;border-radius:9px;padding:15px;white-space:pre-wrap;font-size:13px}
+code{font:inherit}pre code{font-family:ui-monospace,Consolas,monospace}.hint{border-left:4px solid #339c70;padding:14px;background:#eff8f1;margin-top:13px;white-space:pre-wrap}
+.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.danger{background:#fff6e6;border-color:#ebd4ad}
+input[type=checkbox]{accent-color:var(--green)}select{padding:8px;border:1px solid var(--line);border-radius:8px}
+footer{font-size:12px;color:var(--muted);text-align:center;margin:30px}
+</style></head><body>
+<header><div class="wrap"><div class="brand">☕ MOCKAPP LAB</div><h1>Keep hacking.<br>Keep learning.</h1><p>Your self-guided Android security home lab.</p></div></header>
+<main><nav>
+<button data-tab="exercises" class="active">Exercises</button>
+<a href="/setup">Setup</a><a href="/downloads">Downloads</a><a href="/solutions">Solutions</a>
+<button data-tab="progress">Progress</button>
+<button data-tab="settings">Lab Settings</button>
+</nav>
+<section id="exercises"><div class="panel"><h2>Choose your level of help</h2><p class="muted">Each exercise starts with just its objective. Increase hints at your own pace; Level 3 includes concrete, step-by-step instructions.</p></div><div id="exerciseCards"></div></section>
+<section id="progress" class="hide"><div class="panel"><h2>Your progress</h2><p id="progressText"></p><button id="clearProgress">Clear completion markers</button></div></section>
+<section id="settings" class="hide">
+<div class="panel"><h2>Lab Settings</h2><p>All services run on your computer. No instructor keys or registration approval.</p><p>Android emulator API: <code>10.0.2.2</code> · HTTP 8000 · HTTPS 9443 · local portal 8080.</p>
+<p id="health">Checking backend…</p><button id="checkHealth">Check backend</button></div>
+<div class="panel"><h3>Reset everything</h3><p>This permanently deletes local accounts, sessions, balances, transfers, and redemptions. The seeded demo users and rewards will be restored.</p><button class="danger" id="resetLab">Reset local lab</button><p id="resetMessage" role="status"></p></div>
+<div class="panel"><h3>Emulator Preparation: Burp and Frida</h3><p>Import the supplied Burp project settings JSON. Check the proxy listener is running on port <code>8088</code> and redirects destination host to <code>127.0.0.1</code>.</p><p><strong>Burp certificate:</strong> Edit the listener → Certificate → custom certificate. Browse for the provided <code>.p12</code> file on your own computer and enter the supplied password. The configuration file does not include a portable absolute path to the certificate.</p><p><strong>Android CA:</strong> Push the public CA with <code>adb push lab-ca.crt /sdcard/Download/lab-ca.crt</code>. On Android, open Settings → Security &amp; privacy → Install a certificate → CA certificate and select it from Downloads.</p><p><strong>Visible Wi-Fi proxy:</strong> In Android Settings → Network &amp; internet → Internet → AndroidWifi → Edit → Advanced options, set Proxy to Manual, hostname <code>10.0.2.2</code>, port <code>8088</code>, then save. Do not use the separate Emulator Extended Controls upstream proxy. To turn the proxy off, return to Wi-Fi settings and select Proxy: None.</p><p><strong>Frida Server:</strong> Use a root-capable AOSP emulator. Run these commands after selecting the supplied server binary that matches your emulator architecture and installed Frida version:</p><pre><code>adb root
+adb shell id
+adb push frida-server /data/local/tmp/frida-server
+adb shell chmod 755 /data/local/tmp/frida-server
+adb shell "/data/local/tmp/frida-server &gt;/dev/null 2&gt;&amp;1 &amp;"
+frida-ps -U</code></pre><p class="muted">Frida Server must be started again after the emulator reboots. Keep the lab certificates and test private key limited to this isolated workshop.</p></div>
+<div class="panel"><h3>Switch app connection mode</h3><p>Tap <strong>⚗ Lab Testing</strong> inside Mockapp. Select HTTP, HTTPS or HTTPS + pinning, save, then completely force-stop the app and launch it again.</p><pre><code>adb shell am force-stop com.mockapp.loyalty
+adb shell monkey -p com.mockapp.loyalty -c android.intent.category.LAUNCHER 1</code></pre><p class="muted">Alternatively use Android Settings → Apps → Mockapp Home Lab → Force stop, then relaunch.</p></div>
+</section>
+<footer>☕ MOCKAPP LAB · Every cup counts · Every vulnerability matters</footer></main>
+<script>
+const labs=[
+{title:"Static Android analysis",objective:"Identify the launcher activity, backend endpoint and exported components in the APK.",
+levels:[
+"Open the APK in a decompiler and examine its structure.",
+"Look in AndroidManifest.xml and the HTTP client implementation. JADX-GUI can browse both.",
+"Open AndroidManifest.xml in JADX; inspect MAIN/LAUNCHER, exported attributes and ApiClient.kt.",
+"1. Launch JADX-GUI.\n2. Open mockapp-home-lab-v0.5.0-debug.apk.\n3. Open resources → AndroidManifest.xml.\n4. Locate com.mockapp.loyalty.DashboardActivity; it is exported and declares MAIN and LAUNCHER.\n5. Locate com.mockapp.loyalty.DiagnosticsActivity (exported).\n6. Open sources → com.mockapp.loyalty → ApiClient and identify 10.0.2.2:8000 and 10.0.2.2:9443."]},
+{title:"Sensitive information in logs and storage",objective:"Find an authentication token in Android logging and persistent storage.",
+levels:[
+"Inspect the app's data after a successful login.",
+"Look at Android logging and private SharedPreferences. Use ADB.",
+"Start logcat before signing in; watch the MockappAuth tag, then inspect shared_prefs with run-as.",
+"1. With Mockapp running, start log monitoring in your terminal: adb shell logcat -s MockappAuth:D '*:S'\n2. In Mockapp, sign in as alice / coffee1042 (if already signed in, sign out and back in).\n3. Observe the 'Authentication succeeded, bearer token=...' message.\n4. In another terminal, run: adb shell run-as com.mockapp.loyalty cat /data/data/com.mockapp.loyalty/shared_prefs/mockapp_session.xml\n5. Compare the token in the XML with the log output.\n6. In JADX-GUI, examine LoginActivity and search for Log.d or MockappAuth to find the logging call. Then open SessionStore to find the SharedPreferences storage logic. This deliberately debuggable APK supports run-as."]},
+{title:"Hidden diagnostics activity",objective:"Launch a diagnostic activity without using the app's normal navigation.",
+levels:[
+"Find an exported, non-launcher component and reach it.",
+"Inspect AndroidManifest.xml. The activity manager can start exported activities.",
+"Look for DiagnosticsActivity and use adb shell am start -n with its component name.",
+"1. Open AndroidManifest.xml in JADX-GUI.\n2. Find com.mockapp.loyalty.DiagnosticsActivity; confirm android:exported=true.\n3. Execute: adb shell am start -n com.mockapp.loyalty/.DiagnosticsActivity\n4. Observe the diagnostic screen, then inspect its source for the available behaviours."]},
+{title:"HTTPS interception and certificate pinning",objective:"Distinguish unencrypted traffic, TLS validation, and public-key pinning while using Burp.",
+levels:[
+"Try observing the application's network traffic in all three modes.",
+"Use the ⚗ Lab Testing selector and Burp's proxy. Compare HTTP vs HTTPS vs pinned HTTPS.",
+"Set Burp to listen on a reachable address; configure emulator proxy; install its CA on Android; try HTTPS mode and then HTTPS + pinning.",
+"1. Start Docker: docker compose up -d --build.\n2. Make sure Burp has loaded the supplied project settings JSON and the proxy listener is running at 127.0.0.1:8088, with Redirect to host set to 127.0.0.1.\n3. Edit that Burp listener → Certificate, select the supplied custom .p12 file from YOUR computer and enter its password. The imported JSON cannot use the workshop author's absolute file path.\n4. Install the supplied lab-ca.crt as a user CA on Android (adb push lab-ca.crt /sdcard/Download/lab-ca.crt, then Settings → Install a certificate → CA certificate). Configure the Android Wi-Fi proxy manually: 10.0.2.2:8088.\n5. In Mockapp select ⚗ Lab Testing → HTTP → Save. Force-stop and relaunch; send a request and confirm HTTP interception.\n6. Switch to HTTPS, save and force-stop/relaunch; verify interception. Then switch to HTTPS + Pinning, force-stop/relaunch; observe the blocked interception.\n7. Start the matching Frida Server on your rooted emulator (see Emulator Preparation). From the directory containing the supplied script run: frida -U -l ./bypass-mockapp-pinning.js -f com.mockapp.loyalty\n8. Repeat the HTTPS request; verify Burp can intercept with Frida running."]},
+{title:"IDOR / broken object-level authorisation",objective:"Demonstrate access to a different user's profile or transactions while authenticated.",
+levels:[
+"Compare your account's data with another account's object identifier.",
+"Capture an authenticated API request and modify its path in Burp Repeater.",
+"Send your bearer token to GET /api/v1/users/1043 and GET /api/v1/users/1043/transactions while logged in as Alice.",
+"1. Sign in as alice / coffee1042, with Burp interception configured.\n2. In Burp open Proxy → HTTP history and locate the authenticated GET /api/v1/me request. Right-click it → Send to Repeater (Ctrl+R); open the Repeater tab. The Authorization: Bearer token is already in the request.\n3. Change the request path to GET /api/v1/users/1042 and click Send.\n4. Edit the path to GET /api/v1/users/1043, retaining Alice's Bearer token. Click Send.\n5. Repeat with GET /api/v1/users/1043/transactions.\n6. Compare the responses and identify the missing per-object authorisation check."]},
+{title:"Point transfer weak validation",objective:"Find an unintended point transfer accepted by backend validation.",
+levels:[
+"Experiment with the relationship between your balance and requested transfer amount.",
+"Use Burp Repeater to change a legitimate transfer request; compare available and transferred points.",
+"Capture POST /api/v1/transfers and change to_user and points, testing a transfer exceeding the sender's available points.",
+"1. Log in as alice / coffee1042.\n2. In Mockapp send a small valid transfer to bob, capture POST /api/v1/transfers in Burp.\n3. Send the request to Repeater.\n4. Check your remaining balance with GET /api/v1/me.\n5. Change JSON to {\"to_user\":\"bob\",\"points\":10000} and send it.\n6. Read the response and query GET /api/v1/me again; determine whether the server enforces sufficient balance.\n7. Reset your local lab from Lab Settings if you want to return to the starting state."]},
+{title:"Final cupcake challenge",objective:"Obtain the Mockapp Cupcake using the exposed challenge functionality.",
+levels:[
+"Combine the findings from the application and API exercises.",
+"Inspect the dashboard's exported intent handling and reward redemption logic.",
+"In JADX-GUI, inspect DashboardActivity.handleTransferIntent. Identify the auto_send, transfer_to_user and transfer_points Intent extras, then use adb shell am start to invoke the exported activity and finish the cupcake challenge.",
+"1. Log in as Alice.\n2. Open DashboardActivity in JADX-GUI and locate handleTransferIntent and the auto_send Intent extras.\n3. Use this command to launch the exported activity: adb shell am start -n com.mockapp.loyalty/.DashboardActivity --es transfer_to_user bob --ei transfer_points 10000 --ez auto_send true\n4. Refresh Alice's dashboard to examine the transfer.\n5. Sign in as Bob and redeem the Mockapp Cupcake from the rewards list.\n6. Reset the local lab to try again."]}
+];
+const key='mockapp-home-v1';const stored=JSON.parse(localStorage.getItem(key)||'{}');const save=()=>localStorage.setItem(key,JSON.stringify(stored));
+const cards=document.getElementById('exerciseCards');
+labs.forEach((lab,i)=>{const box=document.createElement('article');box.className='exercise';box.innerHTML='<span class="badge">EXERCISE '+(i+1)+'</span><h2></h2><p></p><div class="controls"><label>Hint level <select><option value="0">No hint</option><option value="1">Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option></select></label><label><input type="checkbox"> Complete</label></div><div class="hint"></div>';
+box.querySelector('h2').textContent=lab.title;box.querySelector('p').textContent=lab.objective;
+const sel=box.querySelector('select'),check=box.querySelector('input'),hint=box.querySelector('.hint');sel.value=stored['h'+i]||0;check.checked=!!stored['c'+i];
+const update=()=>{hint.textContent=sel.value==='0'?'No hints selected.':lab.levels[Number(sel.value)];stored['h'+i]=sel.value;stored['c'+i]=check.checked;save()};sel.onchange=update;check.onchange=update;update();cards.appendChild(box)});
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));for(const name of ['exercises','progress','settings'])document.getElementById(name).classList.toggle('hide',name!==b.dataset.tab);if(b.dataset.tab==='progress')document.getElementById('progressText').textContent=labs.filter((_,i)=>stored['c'+i]).length+' of '+labs.length+' exercises marked complete.'});
+document.getElementById('clearProgress').onclick=()=>{labs.forEach((_,i)=>stored['c'+i]=false);save();document.querySelectorAll('.exercise input').forEach(c=>c.checked=false);document.getElementById('progressText').textContent='0 of '+labs.length+' exercises marked complete.'};
+const health=async()=>{try{const r=await fetch('/lab/health');if(!r.ok)throw Error('HTTP '+r.status);const j=await r.json();document.getElementById('health').textContent='Backend: '+j.status+' · '+j.users+' users'}catch(e){document.getElementById('health').textContent='Unavailable: '+e.message}};
+document.getElementById('checkHealth').onclick=health;health();
+document.getElementById('resetLab').onclick=async()=>{if(!confirm('Delete ALL local lab accounts and exercise state? This cannot be undone.'))return;const out=document.getElementById('resetMessage');try{const r=await fetch('/lab/reset',{method:'POST',headers:{'X-Mockapp-Lab-Reset':'reset'}});if(!r.ok)throw Error('HTTP '+r.status);out.textContent='Lab reset. You must sign in again in Mockapp.';health()}catch(e){out.textContent='Reset failed: '+e.message}};
+if(location.hash==='#settings')document.querySelector('nav button[data-tab="settings"]').click();
+</script></body></html>

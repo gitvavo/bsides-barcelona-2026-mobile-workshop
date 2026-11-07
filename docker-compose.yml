@@ -1,0 +1,25 @@
+# Intentionally vulnerable training service. Never publish these ports on a LAN.
+services:
+  api-http:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - mockapp-data:/app/data
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+  api-https:
+    build: .
+    ports:
+      - "127.0.0.1:9443:9443"
+    volumes:
+      - mockapp-data:/app/data
+    command: uvicorn main:app --host 0.0.0.0 --port 9443 --ssl-certfile /app/tls/server.crt --ssl-keyfile /app/tls/server.key
+  lab-settings:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - mockapp-data:/app/data
+    command: uvicorn admin:admin --host 0.0.0.0 --port 8080
+volumes:
+  mockapp-data:
